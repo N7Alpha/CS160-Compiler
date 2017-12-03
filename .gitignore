@@ -1,0 +1,9 @@
+*.o
+ast.*
+parser.*
+lang
+lexer.*
+
+!parser.y
+!lexer.l
+
