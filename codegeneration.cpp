@@ -5,19 +5,30 @@
 // all functions must have code, many may be left empty.
 
 void CodeGenerator::visitProgramNode(ProgramNode* node) {
-    // WRITEME: Replace with code if necessary
+    std::cout << ".data" << std::endl << "printstr: .asciz \"test%d\\n\"" << std::endl << std::endl;
+    std::cout << ".text" << std::endl;
+    std::cout << ".globl Main_main" << std::endl;
+    node->visit_children(this);
+    std::cout << "   mov $1, %eax" << std::endl;
+    std::cout << "   mov $0 %ebx" << std::endl;
+    std::cout << "   int $0x80" << std::endl;
 }
 
 void CodeGenerator::visitClassNode(ClassNode* node) {
-    // WRITEME: Replace with code if necessary
+    currentClassName = node->identifier_1->name;
+    currentClassInfo = classTable->at(currentClassName);
+    node->visit_children(this);
 }
 
 void CodeGenerator::visitMethodNode(MethodNode* node) {
-    // WRITEME: Replace with code if necessary
+    currentMethodName = node->identifier->name;
+    currentMethodInfo = currentClassInfo.methods->at(currentMethodName);
+    std::cout << currentClassName << '_' << currentMethodName << ':' << std::endl; //Method Label
+    node->visit_children(this);
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->visit_children(this);
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
@@ -49,7 +60,9 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
 }
 
 void CodeGenerator::visitPrintNode(PrintNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->visit_children(this);
+    std::cout << "   push $printstr" << std::endl;
+    std::cout << "   call _printf" << std::endl; // Change for CSIL
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
@@ -57,7 +70,12 @@ void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
 }
 
 void CodeGenerator::visitPlusNode(PlusNode* node) {
-    // WRITEME: Replace with code if necessary
+    std::cout << "#### ADD" << std::endl;
+    node->visit_children(this);
+    std::cout << "   pop  %ebx" << std::endl;
+    std::cout << "   pop  %eax" << std::endl;
+    std::cout << "   add  %ebx, %eax" << std::endl;
+    std::cout << "   push %eax" << std::endl;
 }
 
 void CodeGenerator::visitMinusNode(MinusNode* node) {
@@ -113,7 +131,7 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
-    // WRITEME: Replace with code if necessary
+    std::cout << "   push " << '$' << node->integer->value << std::endl;
 }
 
 void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
