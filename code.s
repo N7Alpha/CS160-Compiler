@@ -5,15 +5,30 @@ printstr: .asciz "%d\n"
 .globl Main_main
 Main_main:
 #### DECLARATION
-   add 18446744073709551612, %esp
-#### INTEGER LITERAL
-   push $6
-#### INTEGER LITERAL
-   push $4
+   add  $-4, %esp
 #### SUBTRACT
+   push $6
+   push $4
    pop  %ebx
    pop  %eax
    sub  %ebx, %eax
    push %eax
-#### ASSIGNMENT
-Member not defined
+#### ASSIGNMENT TO VARIABLE
+   pop  %eax
+   movl %eax, -4(%ebp)
+#### MULTIPLY
+#### VARIABLE LOAD
+   movl -4(%ebp), %eax
+   push %eax
+   push $2
+   pop  %ebx
+   pop  %eax
+   imul %ebx, %eax
+   push %eax
+#### PRINT
+   push $printstr
+   call printf
+#### EXIT MAIN
+   mov $1, %eax
+   mov $0, %ebx
+   int $0x80

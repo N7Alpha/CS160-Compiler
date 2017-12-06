@@ -37,6 +37,7 @@ void CodeGenerator::visitProgramNode(ProgramNode* node) {
     std::cout << ".text" << std::endl;
     std::cout << ".globl Main_main" << std::endl;
     node->visit_children(this);
+    std::cout << std::endl;
     std::cout << "#### EXIT MAIN" << std::endl;
     std::cout << "   mov $1, %eax" << std::endl;
     std::cout << "   mov $0, %ebx" << std::endl;
@@ -65,6 +66,7 @@ void CodeGenerator::visitParameterNode(ParameterNode* node) {
 }
 
 void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
+    std::cout << "#### DECLARATION" << std::endl;
     const int localVariableOffset = -4 * node->identifier_list->size(); // Assuming variable size is always 4
     std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
 }
@@ -90,11 +92,48 @@ void CodeGenerator::visitCallNode(CallNode* node) {
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->expression->accept(this);
+    auto elseLabel = newLabel();
+    auto endLabel = newLabel();
+    std::cout << "#### IF ELSE" << std::endl;
+    std::cout << "   pop  %eax" << std::endl;
+    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   cmp  %eax, %ebx" << std::endl;
+    std::cout << "   jne " << elseLabel << std::endl;
+    for(std::list<StatementNode*>::iterator iter = node->statement_list_1->begin();
+        iter != node->statement_list_1->end(); iter++) {
+        (*iter)->accept(this);
+    }
+    std::cout << "   jmp " << endLabel << std::endl;
+    std::cout << elseLabel << ":" << std::endl;
+    for(std::list<StatementNode*>::iterator iter = node->statement_list_2->begin();
+        iter != node->statement_list_2->end(); iter++) {
+        (*iter)->accept(this);
+    }    
+    std::cout << endLabel << ":" << std::endl;
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->expression->accept(this);
+    auto exitLabel = newLabel();
+    auto startLabel = newLabel();
+    std::cout << "#### WHILE" << std::endl;
+    std::cout << "   pop  %eax" << std::endl;
+    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   cmp  %eax, %ebx" << std::endl;
+    std::cout << "   jne " << exitLabel << std::endl;
+    std::cout << startLabel<< ":" << std::endl;
+    for(std::list<StatementNode*>::iterator iter = node->statement_list->begin();
+        iter != node->statement_list->end(); iter++) {
+        (*iter)->accept(this);
+    }
+    node->expression->accept(this);
+    std::cout << "   pop  %eax" << std::endl;
+    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   cmp  %eax, %ebx" << std::endl;
+    std::cout << "   je " << startLabel << std::endl;
+    std::cout << exitLabel << ":" << std::endl;
+
 }
 
 void CodeGenerator::visitPrintNode(PrintNode* node) {
@@ -127,8 +166,8 @@ void CodeGenerator::visitMinusNode(MinusNode* node) {
 }
 
 void CodeGenerator::visitTimesNode(TimesNode* node) {
-    std::cout << "#### MULTIPLY" << std::endl;
     node->visit_children(this);
+    std::cout << "#### MULTIPLY" << std::endl;
     std::cout << "   pop  %ebx" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   imul %ebx, %eax" << std::endl;
@@ -136,8 +175,8 @@ void CodeGenerator::visitTimesNode(TimesNode* node) {
 }
 
 void CodeGenerator::visitDivideNode(DivideNode* node) {
-    std::cout << "#### DIVIDE" << std::endl;
     node->visit_children(this);
+    std::cout << "#### DIVIDE" << std::endl;
     std::cout << "   pop  %ebx" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   cdq" << std::endl;
@@ -146,41 +185,41 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
 }
 
 void CodeGenerator::visitGreaterNode(GreaterNode* node) {
-    std::cout << "#### GREATER THAN" << std::endl;
     node->visit_children(this);
+    std::cout << "#### GREATER THAN" << std::endl;
     auto trueLabel = newLabel();
     auto endLabel = newLabel();
     std::cout << "   pop  %ebx" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
-    std::cout << "   cmp  %eax, %ebx" << std::endl;
+    std::cout << "   cmp  %ebx, %eax" << std::endl;
     std::cout << "   jg   " << trueLabel << std::endl;
     std::cout << "   push $0" << std::endl;
     std::cout << "   jmp  " << endLabel << std::endl;
-    std::cout << "   " << trueLabel << ":" << std::endl;
+    std::cout << trueLabel << ":" << std::endl;
     std::cout << "   push $1" << std::endl;
-    std::cout << "   " << endLabel << ":" << std::endl;
+    std::cout << endLabel << ":" << std::endl;
     
 }
 
 void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
-    std::cout << "#### GREATER THAN OR EQUAL" << std::endl;
     node->visit_children(this);
+    std::cout << "#### GREATER THAN OR EQUAL" << std::endl;
     auto trueLabel = newLabel();
     auto endLabel = newLabel();
     std::cout << "   pop  %ebx" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
-    std::cout << "   cmp  %eax, %ebx" << std::endl;
+    std::cout << "   cmp  %ebx, %eax" << std::endl;
     std::cout << "   jge   " << trueLabel << std::endl;
     std::cout << "   push $0" << std::endl;
     std::cout << "   jmp  " << endLabel << std::endl;
-    std::cout << "   " << trueLabel << ":" << std::endl;
+    std::cout << trueLabel << ":" << std::endl;
     std::cout << "   push $1" << std::endl;
-    std::cout << "   " << endLabel << ":" << std::endl;
+    std::cout << endLabel << ":" << std::endl;
 }
 
 void CodeGenerator::visitEqualNode(EqualNode* node) {
-    std::cout << "#### EQUAL" << std::endl;
     node->visit_children(this);
+    std::cout << "#### EQUAL" << std::endl;
     auto trueLabel = newLabel();
     auto endLabel = newLabel();
     std::cout << "   pop  %ebx" << std::endl;
@@ -189,14 +228,14 @@ void CodeGenerator::visitEqualNode(EqualNode* node) {
     std::cout << "   je   " << trueLabel << std::endl;
     std::cout << "   push $0" << std::endl;
     std::cout << "   jmp  " << endLabel << std::endl;
-    std::cout << "   " << trueLabel << ":" << std::endl;
+    std::cout << trueLabel << ":" << std::endl;
     std::cout << "   push $1" << std::endl;
-    std::cout << "   " << endLabel << ":" << std::endl;
+    std::cout << endLabel << ":" << std::endl;
 }
 
 void CodeGenerator::visitAndNode(AndNode* node) {
-    std::cout << "#### AND OPERATOR" << std::endl;
     node->visit_children(this);
+    std::cout << "#### AND OPERATOR" << std::endl;
     std::cout << "   pop  %ebx" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   andl %ebx, %eax" << std::endl;
@@ -204,8 +243,8 @@ void CodeGenerator::visitAndNode(AndNode* node) {
 }
 
 void CodeGenerator::visitOrNode(OrNode* node) {
-    std::cout << "#### OR OPERATOR" << std::endl;
     node->visit_children(this);
+    std::cout << "#### OR OPERATOR" << std::endl;
     std::cout << "   pop  %ebx" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   orl  %ebx, %eax" << std::endl;
@@ -213,8 +252,8 @@ void CodeGenerator::visitOrNode(OrNode* node) {
 }
 
 void CodeGenerator::visitNotNode(NotNode* node) {
-    std::cout << "#### NOT OPERATOR" << std::endl;
     node->visit_children(this);
+    std::cout << "#### NOT OPERATOR" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   sub  $1, %eax" << std::endl;
     std::cout << "   push %eax" << std::endl;
@@ -222,8 +261,8 @@ void CodeGenerator::visitNotNode(NotNode* node) {
 }
 
 void CodeGenerator::visitNegationNode(NegationNode* node) {
-    std::cout << "#### NEGATION OPERATOR" << std::endl;
     node->visit_children(this);
+    std::cout << "#### NEGATION OPERATOR" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   neg  %eax" << std::endl;
     std::cout << "   push %eax" << std::endl;
@@ -245,10 +284,12 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
+    std::cout << "#### INTEGER LITERAL" << std::endl;
     std::cout << "   push " << '$' << node->integer->value << std::endl;
 }
 
 void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
+    std::cout << "#### BOOLEAN LITERAL" << std::endl;
     std::cout << "   push " << '$' << node->integer->value << std::endl;
 }
 
