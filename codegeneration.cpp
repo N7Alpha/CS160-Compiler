@@ -115,8 +115,8 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
     node->expression->accept(this);
-    auto exitLabel = newLabel();
     auto startLabel = newLabel();
+    auto exitLabel = newLabel();
     std::cout << "#### WHILE" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
     std::cout << "   mov  $1, %ebx" << std::endl;
@@ -133,7 +133,6 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
     std::cout << "   cmp  %eax, %ebx" << std::endl;
     std::cout << "   je " << startLabel << std::endl;
     std::cout << exitLabel << ":" << std::endl;
-
 }
 
 void CodeGenerator::visitPrintNode(PrintNode* node) {
@@ -144,7 +143,20 @@ void CodeGenerator::visitPrintNode(PrintNode* node) {
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
-    // WRITEME: Replace with code if necessary
+    auto startLabel = newLabel();
+    auto exitLabel = newLabel();
+    std::cout << "#### DO-WHILE" << std::endl;
+    std::cout << startLabel<< ":" << std::endl;
+    for(std::list<StatementNode*>::iterator iter = node->statement_list->begin();
+        iter != node->statement_list->end(); iter++) {
+        (*iter)->accept(this);
+    }
+    node->expression->accept(this);
+    std::cout << "   pop  %eax" << std::endl;
+    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   cmp  %eax, %ebx" << std::endl;
+    std::cout << "   je " << startLabel << std::endl;
+    std::cout << exitLabel << ":" << std::endl;
 }
 
 void CodeGenerator::visitPlusNode(PlusNode* node) {
