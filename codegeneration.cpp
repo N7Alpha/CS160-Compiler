@@ -11,6 +11,26 @@ std::string newLabel() {
     return s.str();
 }
 
+VariableInfo variableInfoForMember(CodeGenerator *g, std::string identifier, std::string className) {
+    do {
+        auto *members = g->classTable->at(className).members;
+        if (members->find(identifier) != members->end()) {
+            return members->at(identifier);
+        }
+    } while ((className = g->classTable->at(className).superClassName) != "");
+
+    std::cout << "Member not defined";
+    abort();
+}
+
+VariableInfo variableInfoForIdentifier(CodeGenerator *g, std::string identifier) {
+    if (g->currentMethodInfo.variables->find(identifier) == g->currentMethodInfo.variables->end()) { // Variable exists as parameter or local
+        return g->currentMethodInfo.variables->at(identifier);
+    } else { // Variable exists as member of class or superclass
+        return variableInfoForMember(g, identifier, g->currentClassName);
+    }
+}
+
 void CodeGenerator::visitProgramNode(ProgramNode* node) {
     std::cout << ".data" << std::endl << "printstr: .asciz \"%d\\n\"" << std::endl << std::endl;
     std::cout << ".text" << std::endl;
@@ -44,7 +64,9 @@ void CodeGenerator::visitParameterNode(ParameterNode* node) {
 }
 
 void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->visit_children(this);
+    std::cout << "#### DECLARATION" << std::endl;
+    std::cout << "   add "<< -4 * node->identifier_list->size() << " %esp" << std::endl;
 }
 
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
@@ -52,7 +74,16 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 }
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->visit_children(this);
+    std::cout << "#### ASSIGNMENT" << std::endl;
+    VariableInfo vi;
+    if (node->identifier_2) {
+        vi = variableInfoForMember(this, node->identifier_1->name, node->identifier_2->name);
+    } else {
+        vi = variableInfoForIdentifier(this, node->identifier_1->name);
+    }
+        std::cout << "   pop  %ebx" << std::endl;
+        std::cout << "   mov ebx " << vi.offset << "(%ebp)" << std::endl;
 }
 
 void CodeGenerator::visitCallNode(CallNode* node) {
@@ -185,7 +216,12 @@ void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->visit_children(this);
+    std::cout << "#### VARIABLE" << std::endl;
+    VariableInfo  vi = variableInfoForIdentifier(this, node->identifier->name);
+    std::cout << "   mov" << vi.offset << "(%ebp) %eax" << std::endl;
+    std::cout << "   push %eax" << std::endl;
+
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
@@ -219,7 +255,12 @@ void CodeGenerator::visitNoneNode(NoneNode* node) {
 }
 
 void CodeGenerator::visitIdentifierNode(IdentifierNode* node) {
-    // WRITEME: Replace with code if necessary
+    /*
+    node->visit_children(this);
+    std::cout << "#### IDENTIFIER" << std::endl;
+    VariableInfo vi = variableInfoForIdentifier(this, node->name);
+    */
+
 }
 
 void CodeGenerator::visitIntegerNode(IntegerNode* node) {
