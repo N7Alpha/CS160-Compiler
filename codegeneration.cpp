@@ -58,7 +58,16 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
+    std::cout << "#### "  << "METHOD BODY" << std::endl;
+    int variableCount = 0;
+    for (auto declarationNode :  *(node->declaration_list)) {
+        variableCount += declarationNode->identifier_list->size();
+    }
+    int localVariableOffset = -4 * variableCount;
+    
+    std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
     node->visit_children(this);
+    std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
@@ -66,9 +75,7 @@ void CodeGenerator::visitParameterNode(ParameterNode* node) {
 }
 
 void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
-    std::cout << "#### DECLARATION" << std::endl;
-    const int localVariableOffset = -4 * node->identifier_list->size(); // Assuming variable size is always 4
-    std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
+    
 }
 
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
@@ -78,7 +85,12 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
     node->visit_children(this);
     if (node->identifier_2) { // Member of object
-        std::cout << "#### ASSIGNMENT TO MEMBER OF " << node->identifier_1->name << std::endl;
+        std::cout << "#### ASSIGNMENT TO " << node->identifier_2->name << " IN OBJECT " << node->identifier_1->name << std::endl;
+        const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
+        const auto memberInfo = variableInfoForMember(this, node->identifier_2->name, node->identifier_1->name);
+        std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
+        std::cout << "   pop  %ebx" << std::endl;
+        std::cout << "   movl %ebx, " << memberInfo.offset << "(%eax)" << std::endl; // Store value in the member
     } else { // Local, parameter, or implicitly self
         std::cout << "#### ASSIGNMENT TO VARIABLE" << std::endl;
         auto variableInfo = variableInfoForIdentifier(this, node->identifier_1->name);
@@ -285,7 +297,12 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 }
 
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
-    // WRITEME: Replace with code if necessary
+    std::cout << "#### MEMBER LOAD" << std::endl;
+    const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
+    const auto memberInfo = variableInfoForMember(this, node->identifier_2->name, node->identifier_1->name);
+    std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
+    std::cout << "   movl " << memberInfo.offset << "(%eax), %eax" << std::endl; // Load object member into accumulator
+    std::cout << "   push %eax" << std::endl;
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
