@@ -4,6 +4,10 @@ typedef unsigned int uint;
 // CodeGenerator Visitor Functions: These are the functions
 // you will complete to generate the x86 assembly code. Not
 // all functions must have code, many may be left empty.
+
+
+//Helper Functions
+
 std::string newLabel() {
     static int count = 0;
     count++;
@@ -32,16 +36,32 @@ VariableInfo variableInfoForIdentifier(CodeGenerator *g, std::string identifier)
     }
 }
 
+int sizeForClassInfo(CodeGenerator *g, ClassInfo classInfo) {
+    if (classInfo.superClassName == "") {
+        return classInfo.membersSize;
+    }
+    return classInfo.membersSize + sizeForClassInfo(g, g->classTable->at(classInfo.superClassName));
+}
+
+int offsetForMember(CodeGenerator *g, std::string member, ClassInfo classInfo) {
+    // Get the class this member was inherited from otherwise the offset will be wrong
+    while (classInfo.members->find(member) == classInfo.members->end()) {
+        classInfo = g->classTable->at(classInfo.superClassName);
+    }
+    
+    // Offset the the offset by the combined size of all the superclasses (The symbol table doesn't do this automatically)
+    auto superclassOffset = classInfo.superClassName != "" ? sizeForClassInfo(g, g->classTable->at(classInfo.superClassName)) : 0;
+    return classInfo.membersSize + superclassOffset;
+}
+
+//End of helper functions
+
 void CodeGenerator::visitProgramNode(ProgramNode* node) {
     std::cout << ".data" << std::endl << "printstr: .asciz \"%d\\n\"" << std::endl << std::endl;
     std::cout << ".text" << std::endl;
     std::cout << ".globl Main_main" << std::endl;
     node->visit_children(this);
     std::cout << std::endl;
-    std::cout << "#### EXIT MAIN" << std::endl;
-    std::cout << "   mov $1, %eax" << std::endl;
-    std::cout << "   mov $0, %ebx" << std::endl;
-    std::cout << "   int $0x80" << std::endl;
 }
 
 void CodeGenerator::visitClassNode(ClassNode* node) {
@@ -58,16 +78,39 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
-    std::cout << "#### "  << "METHOD BODY" << std::endl;
-    int variableCount = 0;
-    for (auto declarationNode :  *(node->declaration_list)) {
-        variableCount += declarationNode->identifier_list->size();
+    if (currentMethodName == "main" && currentClassName == "Main") { // if in main method
+        node->visit_children(this);
+        std::cout << "#### EXIT MAIN" << std::endl; // exit with system call
+        std::cout << "   mov $1, %eax" << std::endl;
+        std::cout << "   mov $0, %ebx" << std::endl;
+        std::cout << "   int $0x80" << std::endl;
+    } else {
+        std::cout << "#### "  << "METHOD BODY" << std::endl;
+        
+        // Base pointer maintenance
+        std::cout << "   push %ebp" << std::endl;
+        std::cout << "   movl %esp, %ebp" << std::endl;
+        
+        // Compute memory for local variables
+        int variableCount = 0;
+        for (auto declarationNode :  *(node->declaration_list)) {
+            variableCount += declarationNode->identifier_list->size();
+        }
+        int localVariableOffset = -4 * variableCount;
+        
+        std::cout << "   push %ebx" << std::endl;
+        std::cout << "   push %esi" << std::endl;
+        std::cout << "   push %edi" << std::endl;
+        std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
+        node->visit_children(this);
+        std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
+        std::cout << "   pop  %edi" << std::endl;
+        std::cout << "   pop  %esi" << std::endl;
+        std::cout << "   pop  %ebx" << std::endl;
+        
+        std::cout << "   pop  %ebp" << std::endl;
+        std::cout << "   ret" << std::endl;
     }
-    int localVariableOffset = -4 * variableCount;
-    
-    std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
-    node->visit_children(this);
-    std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
@@ -79,7 +122,9 @@ void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
 }
 
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
-    // WRITEME: Replace with code if necessary
+    node->visit_children(this);
+    std::cout << "#### "  << "STORE RETURN VALUE" << std::endl;
+    std::cout << "   pop %eax" << std::endl; // Where the return value is stored by convention
 }
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
@@ -87,20 +132,30 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
     if (node->identifier_2) { // Member of object
         std::cout << "#### ASSIGNMENT TO " << node->identifier_2->name << " IN OBJECT " << node->identifier_1->name << std::endl;
         const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-        const auto memberInfo = variableInfoForMember(this, node->identifier_2->name, node->identifier_1->name);
+        const auto memberOffset = offsetForMember(this, node->identifier_2->name, classTable->at(objectInfo.type.objectClassName));
         std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
         std::cout << "   pop  %ebx" << std::endl;
-        std::cout << "   movl %ebx, " << memberInfo.offset << "(%eax)" << std::endl; // Store value in the member
+        std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
     } else { // Local, parameter, or implicitly self
-        std::cout << "#### ASSIGNMENT TO VARIABLE" << std::endl;
-        auto variableInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-        std::cout << "   pop  %eax" << std::endl;
-        std::cout << "   movl %eax, " << variableInfo.offset << "(%ebp)" << std::endl;
+        std::cout << "#### ASSIGNMENT TO " << node->identifier_1->name << std::endl;
+        if (currentMethodInfo.variables->find(node->identifier_1->name) != currentMethodInfo.variables->end()) { // Local or parameter
+            auto variableInfo = variableInfoForIdentifier(this, node->identifier_1->name);
+            std::cout << "   pop  %eax" << std::endl;
+            std::cout << "   movl %eax, " << variableInfo.offset << "(%ebp)" << std::endl;
+        } else { // implicitly self
+            const auto memberOffset = offsetForMember(this, node->identifier_1->name, currentClassInfo);
+            std::cout << "   movl " << "8(%ebp), %eax" << std::endl; // Load self address into accumulator
+            std::cout << "   pop  %ebx" << std::endl;
+            std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
+        }
+        
     }
 }
 
-void CodeGenerator::visitCallNode(CallNode* node) {
-    // WRITEME: Replace with code if necessary
+void CodeGenerator::visitCallNode(CallNode* node) { // Call used for side effects
+    std::cout << "#### SIDE EFFECT CALL" << std::endl;
+    node->visit_children(this);
+    std::cout << "   add $4, %esp" << std::endl; // return value not used
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
@@ -152,6 +207,7 @@ void CodeGenerator::visitPrintNode(PrintNode* node) {
     std::cout << "#### PRINT" << std::endl;
     std::cout << "   push $printstr" << std::endl;
     std::cout << "   call printf" << std::endl;
+    std::cout << "   add  $8, %esp" << std::endl;
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
@@ -293,23 +349,82 @@ void CodeGenerator::visitNegationNode(NegationNode* node) {
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
-    // WRITEME: Replace with code if necessary
+    std::cout << "#### METHOD CALL NODE" << std::endl;
+    // Save registers to follow convention
+    std::cout << "   push %eax" << std::endl;
+    std::cout << "   push %ecx" << std::endl;
+    std::cout << "   push %edx" << std::endl;
+    
+    // Load arguments (Can't just visit children of node because arguments will be in reverse order)
+    if (node->expression_list) {
+        for (auto argument = node->expression_list->rbegin(); argument != node->expression_list->rend(); ++argument) {
+            (*argument)->accept(this);
+        }
+    }
+    
+    
+    // Push self on stack (Harder than it seems)
+    if (node->identifier_2) { // Called explicitly on object
+        auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
+        std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl;
+        std::cout << "   push %eax" << std::endl;
+    } else { // Called implicitly on self
+        if (currentClassName != "Main") {
+            std::cout << "   movl 8(%ebp), %eax" << std::endl;
+            std::cout << "   push %eax" << std::endl;
+        } else {
+            std::cout << "   add $-4, %esp" << std::endl; // Empty space for self to work with offsets
+        }
+    }
+    
+    // Determine method Label (Could be in superclass)
+    auto className = node->identifier_2 ? variableInfoForIdentifier(this, node->identifier_1->name).type.objectClassName : currentClassName;
+    auto classInfo = node->identifier_2 ? classTable->at(variableInfoForIdentifier(this, node->identifier_1->name).type.objectClassName) : currentClassInfo;
+    auto methodName = node->identifier_2 ? node->identifier_2->name : node->identifier_1->name;
+    while (classInfo.methods->find(methodName) == classInfo.methods->end()) { // While you haven't found a class containing the method
+        className = classInfo.superClassName;
+        classInfo = classTable->at(classInfo.superClassName);
+    }
+    
+    // Call the function (Pushes return address to stack then jumps to label)
+    std::cout << "   call " << className << "_" << methodName << std::endl;
+    
+    // Store return value in ebx because we're going to restore eax
+    std::cout << "   movl %eax, %ebx" << std::endl;
+    
+    // Clear arguments and self from stack
+    std::cout << "   add $" << 4 * (node->expression_list->size() + 1) << ", %esp" << std::endl;
+    
+    // Restore registers
+    std::cout << "   pop  %edx" << std::endl;
+    std::cout << "   pop  %ecx" << std::endl;
+    std::cout << "   pop  %eax" << std::endl;
+    
+    // Put return value on the stack
+    std::cout << "   push %ebx" << std::endl;
 }
 
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
-    std::cout << "#### MEMBER LOAD" << std::endl;
+    std::cout << "#### MEMBER LOAD " << node->identifier_1->name << "." << node->identifier_2->name << std::endl;
     const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-    const auto memberInfo = variableInfoForMember(this, node->identifier_2->name, node->identifier_1->name);
+    const auto memberOffset = offsetForMember(this, node->identifier_2->name, classTable->at(objectInfo.type.objectClassName));
     std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
-    std::cout << "   movl " << memberInfo.offset << "(%eax), %eax" << std::endl; // Load object member into accumulator
+    std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load object member into accumulator
     std::cout << "   push %eax" << std::endl;
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
-    auto variableInfo = variableInfoForIdentifier(this, node->identifier->name);
-    std::cout << "#### VARIABLE LOAD" << std::endl;
-    std::cout << "   movl " << variableInfo.offset << "(%ebp), %eax" << std::endl;
-    std::cout << "   push %eax" << std::endl;
+    std::cout << "#### LOAD VARIABLE " << node->identifier->name << std::endl;
+    if (currentMethodInfo.variables->find(node->identifier->name) != currentMethodInfo.variables->end()) { // local or parameter
+        auto variableInfo = variableInfoForIdentifier(this, node->identifier->name);
+        std::cout << "   movl " << variableInfo.offset << "(%ebp), %eax" << std::endl;
+        std::cout << "   push %eax" << std::endl;
+    } else { // implicitly self
+        auto memberOffset = offsetForMember(this, node->identifier->name, currentClassInfo);
+        std::cout << "   movl " << "8(%ebp), %eax" << std::endl; // Load self address into accumulator
+        std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load object member into accumulator
+        std::cout << "   push %eax" << std::endl;
+    }
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
@@ -325,10 +440,41 @@ void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
 void CodeGenerator::visitNewNode(NewNode* node) {
     auto classInfo = classTable->at(node->identifier->name);
     std::cout << "#### NEW OPERATOR" << std::endl;
-    std::cout << "   push $" << classInfo.membersSize << std::endl;
+    std::cout << "   push $" << sizeForClassInfo(this, classInfo) << std::endl;
     std::cout << "   call malloc" << std::endl;
     std::cout << "   add  $4, %esp" << std::endl;
     std::cout << "   push %eax" << std::endl;
+    
+    if (classInfo.methods->find(node->identifier->name) != classInfo.methods->end()) {
+        std::cout << "#### CALLING CONSTRUCTOR" << std::endl;
+        // Save registers to follow convention
+        std::cout << "   push %eax" << std::endl;
+        std::cout << "   push %ecx" << std::endl;
+        std::cout << "   push %edx" << std::endl;
+        
+        // Load arguments (Can't just visit children of node because arguments will be in reverse order)
+        if (node->expression_list) {
+            for (auto argument = node->expression_list->rbegin(); argument != node->expression_list->rend(); ++argument) {
+                (*argument)->accept(this);
+            }
+        }
+        
+        // Push self (This is pretty horrendous but I can't figure out a good way to do it)
+        std::cout << "   movl " << 4 * (node->expression_list->size()+3) << "(%esp), %eax" << std::endl;
+        std::cout << "   push %eax" << std::endl;
+        
+        // Call constructor
+        std::cout << "   call " << node->identifier->name << "_" << node->identifier->name << std::endl;
+        
+        // Clear arguments and self from stack
+        std::cout << "   add $" << 4 * (node->expression_list->size() + 1) << ", %esp" << std::endl;
+        
+        // Restore registers
+        std::cout << "   pop  %edx" << std::endl;
+        std::cout << "   pop  %ecx" << std::endl;
+        std::cout << "   pop  %eax" << std::endl;
+        
+    }
 }
 
 void CodeGenerator::visitIntegerTypeNode(IntegerTypeNode* node) {
