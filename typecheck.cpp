@@ -118,8 +118,6 @@ MethodInfo methodForIdentifier(TypeCheck *t, std::string identifier, std::string
     } while ((className = t->classTable->at(className).superClassName) != "");
     std::cout << "Error member does not exist";
     exit(1);
-    MethodInfo method;
-    return method;
 }
 
 bool methodIsDefined(TypeCheck *t, std::string identifier, std::string className) {
@@ -151,9 +149,6 @@ CompoundType typeForMember(TypeCheck *t, std::string identifier, std::string cla
     } while ((className = t->classTable->at(className).superClassName) != "");
     std::cout << "Error member does not exist"; //Ideally type checking could be done here but its tricky to disambiguate from undefined_member from undefined_type
     exit(1);
-    CompoundType type;
-    return type;
-    
 }
 
 CompoundType typeForVariable(TypeCheck *t, std::string identifier) {
@@ -163,6 +158,15 @@ CompoundType typeForVariable(TypeCheck *t, std::string identifier) {
     } else { // Variable exists as local variable or parameter
         return t->currentVariableTable->at(identifier).type;
     }
+}
+
+bool classIsA(TypeCheck *t, std::string inherited, std::string super) {
+    do {
+        if (inherited == super) {
+            return true;
+        }
+    } while ((inherited = t->classTable->at(inherited).superClassName) != "");
+    return false;
 }
 //End Helper Functions
 
@@ -252,7 +256,7 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
     node->visit_children(this);
     currentVariableTable = oldVariableTable;
     
-    if (node->methodbody->basetype != returnType.baseType || (node->methodbody->objectClassName != returnType.objectClassName && node->methodbody->basetype == bt_object)) { // If return type does not match definition
+    if (node->methodbody->basetype != returnType.baseType || (!classIsA(this, node->methodbody->objectClassName, returnType.objectClassName) && node->methodbody->basetype == bt_object)) { // If return type does not match definition
         typeError(return_type_mismatch);
     }
     
@@ -317,7 +321,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
                 if (memberIsDefined(this, node->identifier_2->name, typeForVariable(this, node->identifier_1->name).objectClassName)) {
                     auto lhsType = typeForMember(this, node->identifier_2->name, typeForVariable(this, node->identifier_1->name).objectClassName);
                     auto rhsType = compoundTypeForTypes(node->expression->basetype, node->expression->objectClassName);
-                    if (lhsType.baseType != rhsType.baseType || lhsType.objectClassName != rhsType.objectClassName) {
+                    if (lhsType.baseType != rhsType.baseType || !classIsA(this, rhsType.objectClassName, lhsType.objectClassName)) {
                         typeError(assignment_type_mismatch);
                     }
                 } else {
@@ -330,7 +334,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
         } else { // Assigning to variable
             auto lhsType = typeForVariable(this, node->identifier_1->name);
             auto rhsType = compoundTypeForTypes(node->expression->basetype, node->expression->objectClassName);
-            if (lhsType.baseType != rhsType.baseType || lhsType.objectClassName != rhsType.objectClassName) {
+            if (lhsType.baseType != rhsType.baseType || !classIsA(this, rhsType.objectClassName, lhsType.objectClassName)) {
                 typeError(assignment_type_mismatch);
             }
         }
@@ -504,7 +508,7 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
     auto it1 = parameterList->begin();
     auto it2 = node->expression_list->begin();
     for(; it1 != parameterList->end(); ++it1, ++it2) {
-        if (it1->baseType != (*it2)->basetype || (it1->objectClassName != (*it2)->objectClassName && (*it2)->basetype == bt_object)) {
+        if (it1->baseType != (*it2)->basetype || (!classIsA(this, (*it2)->objectClassName, it1->objectClassName) && (*it2)->basetype == bt_object)) {
             //std::cout << "Expected " << it1->baseType << "\t" << it1->objectClassName << "\nGot " << (*it2)->basetype << "\t" << (*it2)->objectClassName << '\n';
             typeError(argument_type_mismatch);
         }
@@ -562,7 +566,7 @@ void TypeCheck::visitNewNode(NewNode* node) {
         auto it1 = parameterList->begin();
         auto it2 = node->expression_list->begin();
         for(; it1 != parameterList->end(); ++it1, ++it2) {
-            if (it1->baseType != (*it2)->basetype || (it1->objectClassName != (*it2)->objectClassName && (*it2)->basetype == bt_object)) {
+            if (it1->baseType != (*it2)->basetype || (!classIsA(this, (*it2)->objectClassName, it1->objectClassName) && (*it2)->basetype == bt_object)) {
                 typeError(argument_type_mismatch);
             }
         }
