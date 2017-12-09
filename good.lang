@@ -5,7 +5,7 @@ Main {
 	    print(1);
 	}
 	print (not false);
-	
+	print (not true);	
      }    
 
 }

@@ -341,7 +341,7 @@ void CodeGenerator::visitNotNode(NotNode* node) {
     node->visit_children(this);
     std::cout << "#### NOT OPERATOR" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
-    std::cout << "   sub  $1, %eax" << std::endl;
+    std::cout << "   xor  $1, %eax" << std::endl;
     std::cout << "   push %eax" << std::endl;
     
 }
