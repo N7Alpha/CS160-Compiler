@@ -43,15 +43,18 @@ int sizeForClassInfo(CodeGenerator *g, ClassInfo classInfo) {
     return classInfo.membersSize + sizeForClassInfo(g, g->classTable->at(classInfo.superClassName));
 }
 
-int offsetForMember(CodeGenerator *g, std::string member, ClassInfo classInfo) {
+int offsetForMember(CodeGenerator *g, std::string member, std::string className) {
+    auto classInfo = g->classTable->at(className);
     // Get the class this member was inherited from otherwise the offset will be wrong
     while (classInfo.members->find(member) == classInfo.members->end()) {
+        className = classInfo.superClassName;
         classInfo = g->classTable->at(classInfo.superClassName);
     }
     
-    // Offset the the offset by the combined size of all the superclasses (The symbol table doesn't do this automatically)
+    // Offset the offset by the combined size of all the superclasses (The symbol table doesn't do this automatically)
     auto superclassOffset = classInfo.superClassName != "" ? sizeForClassInfo(g, g->classTable->at(classInfo.superClassName)) : 0;
-    return classInfo.membersSize + superclassOffset;
+    auto memberInfo = variableInfoForMember(g, member, className);
+    return memberInfo.offset + superclassOffset;
 }
 
 //End of helper functions
@@ -132,7 +135,7 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
     if (node->identifier_2) { // Member of object
         std::cout << "#### ASSIGNMENT TO " << node->identifier_2->name << " IN OBJECT " << node->identifier_1->name << std::endl;
         const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-        const auto memberOffset = offsetForMember(this, node->identifier_2->name, classTable->at(objectInfo.type.objectClassName));
+        const auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
         std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
         std::cout << "   pop  %ebx" << std::endl;
         std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
@@ -143,7 +146,7 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
             std::cout << "   pop  %eax" << std::endl;
             std::cout << "   movl %eax, " << variableInfo.offset << "(%ebp)" << std::endl;
         } else { // implicitly self
-            const auto memberOffset = offsetForMember(this, node->identifier_1->name, currentClassInfo);
+            const auto memberOffset = offsetForMember(this, node->identifier_1->name, currentClassName);
             std::cout << "   movl " << "8(%ebp), %eax" << std::endl; // Load self address into accumulator
             std::cout << "   pop  %ebx" << std::endl;
             std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
@@ -407,7 +410,7 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
     std::cout << "#### MEMBER LOAD " << node->identifier_1->name << "." << node->identifier_2->name << std::endl;
     const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-    const auto memberOffset = offsetForMember(this, node->identifier_2->name, classTable->at(objectInfo.type.objectClassName));
+    const auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
     std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
     std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load object member into accumulator
     std::cout << "   push %eax" << std::endl;
@@ -420,7 +423,7 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
         std::cout << "   movl " << variableInfo.offset << "(%ebp), %eax" << std::endl;
         std::cout << "   push %eax" << std::endl;
     } else { // implicitly self
-        auto memberOffset = offsetForMember(this, node->identifier->name, currentClassInfo);
+        auto memberOffset = offsetForMember(this, node->identifier->name, currentClassName);
         std::cout << "   movl " << "8(%ebp), %eax" << std::endl; // Load self address into accumulator
         std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load object member into accumulator
         std::cout << "   push %eax" << std::endl;
