@@ -1,1 +1,12 @@
-c0 {}
+Main {
+
+     main() -> none {
+	if (not false) {
+	    print(1);
+	}
+	print (not false);
+	
+     }    
+
+}
+

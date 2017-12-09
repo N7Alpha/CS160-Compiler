@@ -170,9 +170,9 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
     auto endLabel = newLabel();
     std::cout << "#### IF ELSE" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
-    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   mov  $0, %ebx" << std::endl;
     std::cout << "   cmp  %eax, %ebx" << std::endl;
-    std::cout << "   jne " << elseLabel << std::endl;
+    std::cout << "   je " << elseLabel << std::endl;
     for(std::list<StatementNode*>::iterator iter = node->statement_list_1->begin();
         iter != node->statement_list_1->end(); iter++) {
         (*iter)->accept(this);
@@ -192,9 +192,9 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
     auto exitLabel = newLabel();
     std::cout << "#### WHILE" << std::endl;
     std::cout << "   pop  %eax" << std::endl;
-    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   mov  $0, %ebx" << std::endl;
     std::cout << "   cmp  %eax, %ebx" << std::endl;
-    std::cout << "   jne " << exitLabel << std::endl;
+    std::cout << "   je " << exitLabel << std::endl;
     std::cout << startLabel<< ":" << std::endl;
     for(std::list<StatementNode*>::iterator iter = node->statement_list->begin();
         iter != node->statement_list->end(); iter++) {
@@ -227,9 +227,9 @@ void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
     }
     node->expression->accept(this);
     std::cout << "   pop  %eax" << std::endl;
-    std::cout << "   mov  $1, %ebx" << std::endl;
+    std::cout << "   mov  $0, %ebx" << std::endl;
     std::cout << "   cmp  %eax, %ebx" << std::endl;
-    std::cout << "   je " << startLabel << std::endl;
+    std::cout << "   jne " << startLabel << std::endl;
     std::cout << exitLabel << ":" << std::endl;
 }
 

@@ -349,8 +349,8 @@ Main {
                     local0.member1 = local3 / 132;
                     print 235;
                 } else {
-                    print local0.f2(local0.member2, local0.member1 >= local0.member2) ;
-                    local2 = local0.member1 * 29 equals (local3);
+                    print local0.member1 >= local0.f2(local0.member2, local0.member2) ;
+		    local2 = local0.member1 * 29 equals (local3);
                 }
                 
             }
