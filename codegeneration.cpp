@@ -81,9 +81,18 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
+    // Compute memory for local variables
+    int variableCount = 0;
+    for (auto declarationNode :  *(node->declaration_list)) {
+        variableCount += declarationNode->identifier_list->size();
+    }
+    int localVariableOffset = -4 * variableCount;
+    
     if (currentMethodName == "main" && currentClassName == "Main") { // if in main method
+        std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
         node->visit_children(this);
         std::cout << "#### EXIT MAIN" << std::endl; // exit with system call
+        std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
         std::cout << "   mov $1, %eax" << std::endl;
         std::cout << "   mov $0, %ebx" << std::endl;
         std::cout << "   int $0x80" << std::endl;
@@ -94,12 +103,6 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
         std::cout << "   push %ebp" << std::endl;
         std::cout << "   movl %esp, %ebp" << std::endl;
         
-        // Compute memory for local variables
-        int variableCount = 0;
-        for (auto declarationNode :  *(node->declaration_list)) {
-            variableCount += declarationNode->identifier_list->size();
-        }
-        int localVariableOffset = -4 * variableCount;
         
         std::cout << "   push %ebx" << std::endl;
         std::cout << "   push %esi" << std::endl;
@@ -127,7 +130,7 @@ void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
     node->visit_children(this);
     std::cout << "#### "  << "STORE RETURN VALUE" << std::endl;
-    std::cout << "   pop %eax" << std::endl; // Where the return value is stored by convention
+    std::cout << "   pop  %eax" << std::endl; // Where the return value is stored by convention
 }
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
@@ -158,7 +161,7 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
 void CodeGenerator::visitCallNode(CallNode* node) { // Call used for side effects
     std::cout << "#### SIDE EFFECT CALL" << std::endl;
     node->visit_children(this);
-    std::cout << "   add $4, %esp" << std::endl; // return value not used
+    std::cout << "   add $4, %esp" << std::endl; // return value not used (child node pushes return value on stack)
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
