@@ -1013,6 +1013,12 @@ L28:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-20, %esp
 #### INTEGER LITERAL
    push $24
@@ -1208,9 +1214,10 @@ L38:
    movl -16(%ebp), %eax
    pop  %ebx
    movl %ebx, 8(%eax)
-#### EXIT MAIN
    add  $20, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

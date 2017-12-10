@@ -97,6 +97,12 @@ class0_class0:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-24, %esp
 #### BOOLEAN LITERAL
    push $1
@@ -188,9 +194,10 @@ Main_main:
    push $printstr
    call printf
    add  $8, %esp
-#### EXIT MAIN
    add  $24, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

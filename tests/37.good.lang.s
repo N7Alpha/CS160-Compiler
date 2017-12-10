@@ -3166,6 +3166,12 @@ L136:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-36, %esp
 #### INTEGER LITERAL
    push $45
@@ -3755,9 +3761,10 @@ L170:
 #### ASSIGNMENT TO local4
    pop  %eax
    movl %eax, -20(%ebp)
-#### EXIT MAIN
    add  $36, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

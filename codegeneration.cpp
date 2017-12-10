@@ -92,35 +92,25 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
     }
     int localVariableOffset = -4 * variableCount;
     
-    if (currentMethodName == "main" && currentClassName == "Main") { // if in main method
-        std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
-        node->visit_children(this);
-        std::cout << "#### EXIT MAIN" << std::endl; // exit with system call
-        std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
-        std::cout << "   mov $1, %eax" << std::endl;
-        std::cout << "   mov $0, %ebx" << std::endl;
-        std::cout << "   int $0x80" << std::endl;
-    } else {
-        std::cout << "#### "  << "METHOD BODY" << std::endl;
+    std::cout << "#### "  << "METHOD BODY" << std::endl;
         
-        // Base pointer maintenance
-        std::cout << "   push %ebp" << std::endl;
-        std::cout << "   movl %esp, %ebp" << std::endl;
+    // Base pointer maintenance
+    std::cout << "   push %ebp" << std::endl;
+    std::cout << "   movl %esp, %ebp" << std::endl;
         
         
-        std::cout << "   push %ebx" << std::endl;
-        std::cout << "   push %esi" << std::endl;
-        std::cout << "   push %edi" << std::endl;
-        std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
-        node->visit_children(this);
-        std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
-        std::cout << "   pop  %edi" << std::endl;
-        std::cout << "   pop  %esi" << std::endl;
-        std::cout << "   pop  %ebx" << std::endl;
-        
-        std::cout << "   pop  %ebp" << std::endl;
-        std::cout << "   ret" << std::endl;
-    }
+    std::cout << "   push %ebx" << std::endl;
+    std::cout << "   push %esi" << std::endl;
+    std::cout << "   push %edi" << std::endl;
+    std::cout << "   add  $" << localVariableOffset << ", %esp"  << std::endl;
+    node->visit_children(this);
+    std::cout << "   add  $" << -localVariableOffset << ", %esp"  << std::endl;
+    std::cout << "   pop  %edi" << std::endl;
+    std::cout << "   pop  %esi" << std::endl;
+    std::cout << "   pop  %ebx" << std::endl;
+
+    std::cout << "   pop  %ebp" << std::endl;
+    std::cout << "   ret" << std::endl;
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {

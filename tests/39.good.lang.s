@@ -1098,6 +1098,12 @@ L72:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-24, %esp
 #### NEW OPERATOR
    push $12
@@ -1892,9 +1898,10 @@ L136:
    movl -4(%ebp), %eax
    pop  %ebx
    movl %ebx, 4(%eax)
-#### EXIT MAIN
    add  $24, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

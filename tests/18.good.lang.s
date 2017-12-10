@@ -48,6 +48,12 @@ classA_inc:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-8, %esp
 #### NEW OPERATOR
    push $8
@@ -156,9 +162,10 @@ L4:
    cmp  %eax, %ebx
    jne L1
 L2:
-#### EXIT MAIN
    add  $8, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

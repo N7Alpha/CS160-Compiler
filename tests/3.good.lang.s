@@ -4,6 +4,12 @@ printstr: .asciz "%d\n"
 .text
 .globl Main_main
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-4, %esp
 #### SUBTRACT
 #### INTEGER LITERAL
@@ -31,9 +37,10 @@ Main_main:
    push $printstr
    call printf
    add  $8, %esp
-#### EXIT MAIN
    add  $4, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

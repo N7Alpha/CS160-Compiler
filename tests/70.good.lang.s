@@ -99,6 +99,12 @@ class0_class0:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-40, %esp
 #### NEW OPERATOR
    push $0
@@ -888,9 +894,10 @@ L43:
    pop  %eax
    movl %eax, -4(%ebp)
 L44:
-#### EXIT MAIN
    add  $40, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

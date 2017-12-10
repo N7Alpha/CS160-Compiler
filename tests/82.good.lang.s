@@ -2204,6 +2204,12 @@ L114:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-28, %esp
 #### INTEGER LITERAL
    push $92
@@ -2366,9 +2372,10 @@ L118:
    jmp L116
 L115:
 L116:
-#### EXIT MAIN
    add  $28, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

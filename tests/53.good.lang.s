@@ -249,6 +249,12 @@ L8:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-12, %esp
 #### INTEGER LITERAL
    push $4
@@ -469,9 +475,10 @@ L18:
    push $printstr
    call printf
    add  $8, %esp
-#### EXIT MAIN
    add  $12, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

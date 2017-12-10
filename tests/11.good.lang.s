@@ -99,6 +99,12 @@ classA_doAll:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-4, %esp
 #### SIDE EFFECT CALL
 #### METHOD CALL NODE
@@ -115,9 +121,10 @@ Main_main:
    pop  %eax
    push %ebx
    add $4, %esp
-#### EXIT MAIN
    add  $4, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 

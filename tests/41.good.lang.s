@@ -5523,6 +5523,12 @@ L238:
    pop  %ebp
    ret
 Main_main:
+#### METHOD BODY
+   push %ebp
+   movl %esp, %ebp
+   push %ebx
+   push %esi
+   push %edi
    add  $-32, %esp
 #### INTEGER LITERAL
    push $218
@@ -5940,9 +5946,10 @@ L264:
    cmp  %eax, %ebx
    je L261
 L262:
-#### EXIT MAIN
    add  $32, %esp
-   mov $1, %eax
-   mov $0, %ebx
-   int $0x80
+   pop  %edi
+   pop  %esi
+   pop  %ebx
+   pop  %ebp
+   ret
 
