@@ -387,8 +387,16 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
     // Push self on stack (Harder than it seems)
     if (node->identifier_2) { // Called explicitly on object
         auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-        std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl;
-        std::cout << "   push %eax" << std::endl;
+        if (isLocal(this, node->identifier_1->name)) {
+            std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl;
+            std::cout << "   push %eax" << std::endl;
+        } else { // Object is in self
+            auto objectOffset = offsetForMember(this, node->identifier_1->name, currentClassName);
+            std::cout << "   movl 8(%ebp), %eax" << std::endl; // Load self
+            std::cout << "   movl " << objectOffset << "(%eax), %eax" << std::endl; // Load object
+            std::cout << "   push %eax" << std::endl; // Push object as self for next stackframe
+        }
+        
     } else { // Called implicitly on self
         if (currentClassName != "Main") {
             std::cout << "   movl 8(%ebp), %eax" << std::endl;

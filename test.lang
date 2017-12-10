@@ -1,9 +1,52 @@
+
+class2 {
+    integer	member0;
+    integer	member1;
+    integer	member3;
+    integer	member4;
+    integer	member5;
+
+    f0() -> none {
+	print member3;
+
+
+    }
+
+    class2() -> none {
+        member3 = 420;
+	}
+	
+
+}
+
+class3 {
+    integer	member0;
+    class2	member1;
+
+
+    class3() -> none {
+        member1 = new class2();
+    }
+
+    f0() -> none {
+	print member1.member3;
+	member1.f0();
+	}
+
+
+}
+
 Main {
 
-     main() -> none {
 
-     	    print 6 + 4;
+    main() -> none {
+        class3 local5;
 
-     }    
+	local5 = new class3();
+
+	local5.f0();
+        
+       
+        }
 
 }
