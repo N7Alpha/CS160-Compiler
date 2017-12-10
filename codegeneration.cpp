@@ -57,6 +57,10 @@ int offsetForMember(CodeGenerator *g, std::string member, std::string className)
     return memberInfo.offset + superclassOffset;
 }
 
+bool isLocal(CodeGenerator *g, std::string identifier) {
+    return g->currentMethodInfo.variables->find(identifier) != g->currentMethodInfo.variables->end();
+}
+
 //End of helper functions
 
 void CodeGenerator::visitProgramNode(ProgramNode* node) {
@@ -133,18 +137,29 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
     std::cout << "   pop  %eax" << std::endl; // Where the return value is stored by convention
 }
 
+// Potential for code consolidation I think interchanging the cases would work better
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
     node->visit_children(this);
     if (node->identifier_2) { // Member of object
         std::cout << "#### ASSIGNMENT TO " << node->identifier_2->name << " IN OBJECT " << node->identifier_1->name << std::endl;
         const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-        const auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
-        std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
-        std::cout << "   pop  %ebx" << std::endl;
-        std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
+        if (isLocal(this, node->identifier_1->name)) { // Local or parameter
+            const auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
+            std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
+            std::cout << "   pop  %ebx" << std::endl;
+            std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
+        } else { // implicitly self (Kind of confusing because you need to access the object from self then the member from that object)
+            auto objectOffset = offsetForMember(this, node->identifier_1->name, currentClassName);
+            auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
+            std::cout << "   movl " << "8(%ebp), %eax" << std::endl; // Load self address into accumulator
+            std::cout << "   movl " << objectOffset << "(%eax), %eax" << std::endl; // Load object address into accumulator
+            std::cout << "   pop  %ebx" << std::endl;;
+            std::cout << "   movl %ebx, " << memberOffset << "(%eax)" << std::endl; // Store value in the member
+        }
+        
     } else { // Local, parameter, or implicitly self
         std::cout << "#### ASSIGNMENT TO " << node->identifier_1->name << std::endl;
-        if (currentMethodInfo.variables->find(node->identifier_1->name) != currentMethodInfo.variables->end()) { // Local or parameter
+        if (isLocal(this, node->identifier_1->name)) { // Local or parameter
             auto variableInfo = variableInfoForIdentifier(this, node->identifier_1->name);
             std::cout << "   pop  %eax" << std::endl;
             std::cout << "   movl %eax, " << variableInfo.offset << "(%ebp)" << std::endl;
@@ -413,15 +428,25 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
     std::cout << "#### MEMBER LOAD " << node->identifier_1->name << "." << node->identifier_2->name << std::endl;
     const auto objectInfo = variableInfoForIdentifier(this, node->identifier_1->name);
-    const auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
-    std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
-    std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load object member into accumulator
-    std::cout << "   push %eax" << std::endl;
+    if (isLocal(this, node->identifier_1->name)) { // Object exists as local variable or parameter
+        const auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
+        std::cout << "   movl " << objectInfo.offset << "(%ebp), %eax" << std::endl; // Load object address into accumulator
+        std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load object member into accumulator
+        std::cout << "   push %eax" << std::endl;
+    } else { // Implicitly in self (Kind of confusing because you need to access the object from self then the member from that object)
+        auto objectOffset = offsetForMember(this, node->identifier_1->name, currentClassName);
+        auto memberOffset = offsetForMember(this, node->identifier_2->name, objectInfo.type.objectClassName);
+        std::cout << "   movl " << "8(%ebp), %eax" << std::endl; // Load self address into accumulator
+        std::cout << "   movl " << objectOffset << "(%eax), %eax" << std::endl; // Load object address into accumulator
+        std::cout << "   movl " << memberOffset << "(%eax), %eax" << std::endl; // Load member into accumulator
+        std::cout << "   push %eax" << std::endl;
+    }
+    
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
     std::cout << "#### LOAD VARIABLE " << node->identifier->name << std::endl;
-    if (currentMethodInfo.variables->find(node->identifier->name) != currentMethodInfo.variables->end()) { // local or parameter
+    if (isLocal(this, node->identifier->name)) { // local or parameter
         auto variableInfo = variableInfoForIdentifier(this, node->identifier->name);
         std::cout << "   movl " << variableInfo.offset << "(%ebp), %eax" << std::endl;
         std::cout << "   push %eax" << std::endl;
